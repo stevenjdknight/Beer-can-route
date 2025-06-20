@@ -1,73 +1,54 @@
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
-from PIL import Image
-import math
 import json
-import numpy as np
+from PIL import Image
+import os
 
-st.set_page_config(page_title="Lake Ramsey Route Selector", layout="wide")
-st.title("🗺️ Lake Ramsey Sailing Route Builder")
+# --- CONFIG ---
+st.set_page_config(page_title="🏝️ Lake Ramsey Route Selector", layout="wide")
 
-# --- LOAD MAP IMAGE ---
-try:
-    map_img = Image.open("lake_ramsey_map.png")
-    if map_img.mode != "RGB":
-        map_img = map_img.convert("RGB")
-    np_img = np.array(map_img)
-except Exception as e:
-    st.error(f"Could not load map image: {e}")
-    np_img = None
-    map_img = None
-    canvas_width, canvas_height = 800, 600  # fallback size
-else:
-    canvas_width, canvas_height = map_img.size
+st.title("🧭 Lake Ramsey Sailing Route Planner")
 
-# --- ISLAND LOCATIONS ---
-with open("islands.json") as f:
-    islands = json.load(f)  # Format: {"Island Name": [x_percent, y_percent]}
+st.markdown("""
+Select a sequence of islands by clicking on them in the image below. Your selections will be highlighted and logged in order.
 
-island_coords = {
-    name: (int(p[0] * canvas_width), int(p[1] * canvas_height))
-    for name, p in islands.items()
-}
+We'll use this to:
+- Estimate total course distance
+- Automatically route around islands/land
+- Log safe water tracks based on known contours
+""")
+
+# --- LOAD IMAGE & ISLAND DATA ---
+img = Image.open("lake_ramsey_map.png")
+
+with open("islands.json", "r") as f:
+    island_data = json.load(f)
+
+island_names = list(island_data.keys())
 
 # --- SESSION STATE ---
-if "route" not in st.session_state:
-    st.session_state.route = []
+if "selected" not in st.session_state:
+    st.session_state.selected = []
 
-# --- DRAWING ---
-st.markdown("Click islands on the map to build your route. Use the reset button to clear.")
+# --- DISPLAY IMAGE ---
+st.image(img, use_column_width=True)
 
-# ✅ Safely handle canvas background image
-canvas_result = st_canvas(
-    fill_color="#eee",
-    stroke_width=0,
-    background_image=np_img if isinstance(np_img, np.ndarray) and np_img.size > 0 else None,
-    update_streamlit=True,
-    height=canvas_height,
-    width=canvas_width,
-    drawing_mode="transform",
-    key="lake-canvas"
-)
+# --- ISLAND SELECTION ---
+cols = st.columns(4)
+for i, name in enumerate(island_names):
+    with cols[i % 4]:
+        if st.button(f"{'✅ ' if name in st.session_state.selected else ''}{name}", key=name):
+            if name in st.session_state.selected:
+                st.session_state.selected.remove(name)
+            else:
+                st.session_state.selected.append(name)
 
-# --- CLICK HANDLING ---
-if canvas_result.json_data and "objects" in canvas_result.json_data:
-    if len(canvas_result.json_data["objects"]) > 0:
-        last = canvas_result.json_data["objects"][-1]
-        x_click = last.get("left", 0)
-        y_click = last.get("top", 0)
-
-        for name, (x, y) in island_coords.items():
-            if math.hypot(x - x_click, y - y_click) < 30 and name not in st.session_state.route:
-                st.session_state.route.append(name)
-                st.experimental_rerun()
-
-# --- SHOW ROUTE ---
-if st.session_state.route:
-    st.subheader("📍 Selected Route")
-    st.markdown(" → ".join(st.session_state.route))
-    if st.button("Clear Route"):
-        st.session_state.route = []
-        st.experimental_rerun()
+# --- DISPLAY ROUTE ---
+if st.session_state.selected:
+    st.markdown("### 📍 Selected Route")
+    st.markdown(" → ".join(st.session_state.selected))
 else:
-    st.info("Click islands on the map to start building your route.")
+    st.info("Click islands above to build your route.")
+
+# --- RESET ---
+if st.button("🔄 Clear Route"):
+    st.session_state.selected = []
