@@ -9,11 +9,20 @@ st.set_page_config(page_title="Lake Ramsey Route Selector", layout="wide")
 st.title("🗺️ Lake Ramsey Sailing Route Builder")
 
 # --- LOAD MAP IMAGE ---
-map_img = Image.open("lake_ramsey_map.png").convert("RGB")
-map_array = np.array(map_img)
-canvas_width, canvas_height = map_img.size
+try:
+    map_img = Image.open("lake_ramsey_map.png")
+    if map_img.mode != "RGB":
+        map_img = map_img.convert("RGB")
+    np_img = np.array(map_img)
+except Exception as e:
+    st.error(f"Could not load map image: {e}")
+    np_img = None
+    map_img = None
+    canvas_width, canvas_height = 800, 600  # fallback size
+else:
+    canvas_width, canvas_height = map_img.size
 
-# --- ISLAND LOCATIONS (pixel coordinates on the image) ---
+# --- ISLAND LOCATIONS ---
 with open("islands.json") as f:
     islands = json.load(f)  # Format: {"Island Name": [x_percent, y_percent]}
 
@@ -29,20 +38,28 @@ if "route" not in st.session_state:
 # --- DRAWING ---
 st.markdown("Click islands on the map to build your route. Use the reset button to clear.")
 
-# Ensure image is converted to RGB and NumPy array
-rgb_img = map_img.convert("RGB")
-np_img = np.array(rgb_img)
-
-canvas_result = st_canvas(
-    fill_color="#eee",
-    stroke_width=0,
-    background_image=np_img,  # Safe RGB image as array
-    update_streamlit=True,
-    height=canvas_height,
-    width=canvas_width,
-    drawing_mode="transform",
-    key="lake-canvas"
-)
+if np_img is None:
+    st.warning("Map image not loaded. Displaying blank canvas.")
+    canvas_result = st_canvas(
+        fill_color="#eee",
+        stroke_width=0,
+        update_streamlit=True,
+        height=canvas_height,
+        width=canvas_width,
+        drawing_mode="transform",
+        key="lake-canvas"
+    )
+else:
+    canvas_result = st_canvas(
+        fill_color="#eee",
+        stroke_width=0,
+        background_image=np_img,
+        update_streamlit=True,
+        height=canvas_height,
+        width=canvas_width,
+        drawing_mode="transform",
+        key="lake-canvas"
+    )
 
 # --- CLICK HANDLING ---
 if canvas_result.json_data and "objects" in canvas_result.json_data:
