@@ -29,10 +29,14 @@ if "route" not in st.session_state:
 # --- DRAWING ---
 st.markdown("Click islands on the map to build your route. Use the reset button to clear.")
 
+# Ensure image is converted to RGB and NumPy array
+rgb_img = map_img.convert("RGB")
+np_img = np.array(rgb_img)
+
 canvas_result = st_canvas(
     fill_color="#eee",
     stroke_width=0,
-    background_image=map_array,
+    background_image=np_img,  # Safe RGB image as array
     update_streamlit=True,
     height=canvas_height,
     width=canvas_width,
