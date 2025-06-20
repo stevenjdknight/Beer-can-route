@@ -38,28 +38,17 @@ if "route" not in st.session_state:
 # --- DRAWING ---
 st.markdown("Click islands on the map to build your route. Use the reset button to clear.")
 
-if np_img is None:
-    st.warning("Map image not loaded. Displaying blank canvas.")
-    canvas_result = st_canvas(
-        fill_color="#eee",
-        stroke_width=0,
-        update_streamlit=True,
-        height=canvas_height,
-        width=canvas_width,
-        drawing_mode="transform",
-        key="lake-canvas"
-    )
-else:
-    canvas_result = st_canvas(
-        fill_color="#eee",
-        stroke_width=0,
-        background_image=np_img,
-        update_streamlit=True,
-        height=canvas_height,
-        width=canvas_width,
-        drawing_mode="transform",
-        key="lake-canvas"
-    )
+# ✅ Safely handle canvas background image
+canvas_result = st_canvas(
+    fill_color="#eee",
+    stroke_width=0,
+    background_image=np_img if isinstance(np_img, np.ndarray) and np_img.size > 0 else None,
+    update_streamlit=True,
+    height=canvas_height,
+    width=canvas_width,
+    drawing_mode="transform",
+    key="lake-canvas"
+)
 
 # --- CLICK HANDLING ---
 if canvas_result.json_data and "objects" in canvas_result.json_data:
