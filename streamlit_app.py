@@ -1,86 +1,54 @@
 import streamlit as st
 import json
-from PIL import Image, ImageDraw
+from PIL import Image
 import os
 
 # --- CONFIG ---
-st.set_page_config(page_title="Lake Ramsey Route Selector", layout="wide")
-st.title("🗺️ Lake Ramsey Course Selector")
+st.set_page_config(page_title="🏝️ Lake Ramsey Route Selector", layout="wide")
 
-# --- LOAD MAP IMAGE ---
-MAP_IMAGE_PATH = "lake_ramsey_map.png"  # Use the full lake map with contours and island positions
-ISLANDS_JSON_PATH = "islands.json"
+st.title("🧭 Lake Ramsey Sailing Route Planner")
 
-# Load and resize image
-if not os.path.exists(MAP_IMAGE_PATH):
-    st.error("Map image file not found. Please upload 'lake_ramsey_map.png' to the app directory.")
-    st.stop()
-
-image = Image.open(MAP_IMAGE_PATH)
-image_width, image_height = image.size
-
-# Load island data
-if not os.path.exists(ISLANDS_JSON_PATH):
-    st.error("Island data file not found. Please upload 'islands.json' to the app directory.")
-    st.stop()
-
-with open(ISLANDS_JSON_PATH, 'r') as f:
-    islands = json.load(f)
-
-# Convert island coords from percentages to pixels
-island_coords = {
-    name: (int(x * image_width), int(y * image_height))
-    for name, (x, y) in islands.items()
-}
-
-# Session state to hold route
-if "route" not in st.session_state:
-    st.session_state.route = []
-
-# --- SHOW MAP AND HANDLE CLICKS ---
-st.subheader("Click on islands to build your race route")
-clicked = st.image(image, use_column_width=True)
-
-# Display legend and instructions
 st.markdown("""
-- Each click should match an island on the map.
-- Route is built in the order of clicks.
-- Galliard, Bass & Pike are treated as one point due to shallow water.
-- Route will auto-snap to island centers (safe navigation).
+Select a sequence of islands by clicking on them in the image below. Your selections will be highlighted and logged in order.
+
+We'll use this to:
+- Estimate total course distance
+- Automatically route around islands/land
+- Log safe water tracks based on known contours
 """)
 
-# Buttons
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🔁 Reset Route"):
-        st.session_state.route = []
+# --- LOAD IMAGE & ISLAND DATA ---
+img = Image.open("lake_ramsey_map.png")
 
-with col2:
-    if st.button("✅ Finalize Route") and st.session_state.route:
-        st.success("Route submitted!")
-        st.json(st.session_state.route)
+with open("islands.json", "r") as f:
+    island_data = json.load(f)
 
-# --- DRAW ROUTE ON IMAGE ---
-overlay = image.copy()
-draw = ImageDraw.Draw(overlay)
+island_names = list(island_data.keys())
 
-# Draw island points and names
-for name, (x, y) in island_coords.items():
-    draw.ellipse((x-6, y-6, x+6, y+6), fill="red")
-    draw.text((x+8, y-8), name, fill="white")
+# --- SESSION STATE ---
+if "selected" not in st.session_state:
+    st.session_state.selected = []
 
-# Draw route
-for i in range(1, len(st.session_state.route)):
-    p1 = island_coords[st.session_state.route[i-1]]
-    p2 = island_coords[st.session_state.route[i]]
-    draw.line([p1, p2], fill="yellow", width=3)
+# --- DISPLAY IMAGE ---
+st.image(img, use_column_width=True)
 
-# Display updated image
-st.image(overlay, use_column_width=True)
+# --- ISLAND SELECTION ---
+cols = st.columns(4)
+for i, name in enumerate(island_names):
+    with cols[i % 4]:
+        if st.button(f"{'✅ ' if name in st.session_state.selected else ''}{name}", key=name):
+            if name in st.session_state.selected:
+                st.session_state.selected.remove(name)
+            else:
+                st.session_state.selected.append(name)
 
-# --- CLICK SIMULATION (DEV ONLY) ---
-# Ideally, we'd use a click detector. For now, dropdown selection mimics user action.
-selected = st.selectbox("Select island to add to route", [""] + list(island_coords.keys()))
-if selected and selected not in st.session_state.route:
-    st.session_state.route.append(selected)
-    st.rerun()
+# --- DISPLAY ROUTE ---
+if st.session_state.selected:
+    st.markdown("### 📍 Selected Route")
+    st.markdown(" → ".join(st.session_state.selected))
+else:
+    st.info("Click islands above to build your route.")
+
+# --- RESET ---
+if st.button("🔄 Clear Route"):
+    st.session_state.selected = []
