@@ -8,7 +8,7 @@ st.set_page_config(page_title="Lake Ramsey Route Selector", layout="wide")
 st.title("🗺️ Lake Ramsey Sailing Route Builder")
 
 # --- LOAD MAP IMAGE ---
-map_img = Image.open("lake_ramsey_map.png")
+map_img = Image.open("lake_ramsey_map.png").convert("RGB")
 canvas_width, canvas_height = map_img.size
 
 # --- ISLAND LOCATIONS (pixel coordinates on the image) ---
