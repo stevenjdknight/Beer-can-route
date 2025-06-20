@@ -1,66 +1,86 @@
 import streamlit as st
-import folium
-from streamlit_folium import st_folium
-from geopy.distance import geodesic
+import json
+from PIL import Image, ImageDraw
+import os
 
-st.set_page_config(page_title="Lake Route Selector", layout="wide")
-st.title("📍 BCS Route Builder - Lake Ramsey")
+# --- CONFIG ---
+st.set_page_config(page_title="Lake Ramsey Route Selector", layout="wide")
+st.title("🗺️ Lake Ramsey Course Selector")
 
-# Island coordinates: (lat, lon)
-islands = {
-    "Potter Island": (46.4564, -80.9457),
-    "Swiss Island": (46.4582, -80.9495),
-    "McCrea Island": (46.4601, -80.9520),
-    "Norway Island": (46.4642, -80.9531),
-    "Berry Island": (46.4674, -80.9488),
-    "Swansea Island": (46.4665, -80.9405),
-    "Galliard, Bass & Pike Island": (46.4708, -80.9369),
-    "Gull Rock": (46.4682, -80.9302),
-    "Snug": (46.4656, -80.9265),
-    "Spooky": (46.4632, -80.9241),
-    "Ida Island": (46.4591, -80.9282),
+# --- LOAD MAP IMAGE ---
+MAP_IMAGE_PATH = "lake_ramsey_map.png"  # Use the full lake map with contours and island positions
+ISLANDS_JSON_PATH = "islands.json"
+
+# Load and resize image
+if not os.path.exists(MAP_IMAGE_PATH):
+    st.error("Map image file not found. Please upload 'lake_ramsey_map.png' to the app directory.")
+    st.stop()
+
+image = Image.open(MAP_IMAGE_PATH)
+image_width, image_height = image.size
+
+# Load island data
+if not os.path.exists(ISLANDS_JSON_PATH):
+    st.error("Island data file not found. Please upload 'islands.json' to the app directory.")
+    st.stop()
+
+with open(ISLANDS_JSON_PATH, 'r') as f:
+    islands = json.load(f)
+
+# Convert island coords from percentages to pixels
+island_coords = {
+    name: (int(x * image_width), int(y * image_height))
+    for name, (x, y) in islands.items()
 }
 
-# Persistent session state
+# Session state to hold route
 if "route" not in st.session_state:
     st.session_state.route = []
 
-# Build map
-lake_center = (46.463, -80.940)
-m = folium.Map(location=lake_center, zoom_start=14, tiles="CartoDB positron")
+# --- SHOW MAP AND HANDLE CLICKS ---
+st.subheader("Click on islands to build your race route")
+clicked = st.image(image, use_column_width=True)
 
-# Draw markers and route
-for name, coord in islands.items():
-    folium.Marker(coord, tooltip=name, popup=name).add_to(m)
+# Display legend and instructions
+st.markdown("""
+- Each click should match an island on the map.
+- Route is built in the order of clicks.
+- Galliard, Bass & Pike are treated as one point due to shallow water.
+- Route will auto-snap to island centers (safe navigation).
+""")
 
-# Draw polyline for route
-if len(st.session_state.route) > 1:
-    folium.PolyLine([islands[pt] for pt in st.session_state.route], color="blue", weight=3).add_to(m)
-
-# Calculate total distance
-if len(st.session_state.route) > 1:
-    distance_km = 0.0
-    for i in range(len(st.session_state.route) - 1):
-        p1 = islands[st.session_state.route[i]]
-        p2 = islands[st.session_state.route[i+1]]
-        distance_km += geodesic(p1, p2).km
-    st.markdown(f"### 🧭 Estimated Distance: `{distance_km:.2f} km`")
-
-# Click-based interaction
-st.markdown("#### 🏝️ Select Islands (Click to Add to Route)")
-clicked = st_folium(m, width=900, height=600)
-
-if clicked and clicked.get("last_object_clicked_tooltip"):
-    name = clicked["last_object_clicked_tooltip"]
-    if name not in st.session_state.route:
-        st.session_state.route.append(name)
-        st.rerun()
-
-# Show current route
-if st.session_state.route:
-    st.success(f"Route: {' → '.join(st.session_state.route)}")
-    if st.button("Reset Route"):
+# Buttons
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🔁 Reset Route"):
         st.session_state.route = []
-        st.rerun()
-else:
-    st.info("Click an island to begin plotting your route.")
+
+with col2:
+    if st.button("✅ Finalize Route") and st.session_state.route:
+        st.success("Route submitted!")
+        st.json(st.session_state.route)
+
+# --- DRAW ROUTE ON IMAGE ---
+overlay = image.copy()
+draw = ImageDraw.Draw(overlay)
+
+# Draw island points and names
+for name, (x, y) in island_coords.items():
+    draw.ellipse((x-6, y-6, x+6, y+6), fill="red")
+    draw.text((x+8, y-8), name, fill="white")
+
+# Draw route
+for i in range(1, len(st.session_state.route)):
+    p1 = island_coords[st.session_state.route[i-1]]
+    p2 = island_coords[st.session_state.route[i]]
+    draw.line([p1, p2], fill="yellow", width=3)
+
+# Display updated image
+st.image(overlay, use_column_width=True)
+
+# --- CLICK SIMULATION (DEV ONLY) ---
+# Ideally, we'd use a click detector. For now, dropdown selection mimics user action.
+selected = st.selectbox("Select island to add to route", [""] + list(island_coords.keys()))
+if selected and selected not in st.session_state.route:
+    st.session_state.route.append(selected)
+    st.rerun()
