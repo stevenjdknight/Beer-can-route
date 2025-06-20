@@ -33,14 +33,18 @@ if "selected" not in st.session_state:
 st.image(img, use_column_width=True)
 
 # --- ISLAND SELECTION ---
+st.subheader("🏝️ Island Options (up to 3 roundings each)")
+
 cols = st.columns(4)
 for i, name in enumerate(island_names):
-    with cols[i % 4]:
-        if st.button(f"{'✅ ' if name in st.session_state.selected else ''}{name}", key=name):
-            if name in st.session_state.selected:
-                st.session_state.selected.remove(name)
-            else:
-                st.session_state.selected.append(name)
+    for j in range(1, 4):  # Allow 3 rounds per island
+        label = f"{name} ({j})"
+        with cols[i % 4]:
+            if st.button(f"{'✅ ' if label in st.session_state.selected else ''}{label}", key=label):
+                if label in st.session_state.selected:
+                    st.session_state.selected.remove(label)
+                else:
+                    st.session_state.selected.append(label)
 
 # --- DISPLAY ROUTE ---
 if st.session_state.selected:
