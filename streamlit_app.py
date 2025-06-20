@@ -3,12 +3,14 @@ from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 import math
 import json
+import numpy as np
 
 st.set_page_config(page_title="Lake Ramsey Route Selector", layout="wide")
 st.title("🗺️ Lake Ramsey Sailing Route Builder")
 
 # --- LOAD MAP IMAGE ---
 map_img = Image.open("lake_ramsey_map.png").convert("RGB")
+map_array = np.array(map_img)
 canvas_width, canvas_height = map_img.size
 
 # --- ISLAND LOCATIONS (pixel coordinates on the image) ---
@@ -26,12 +28,11 @@ if "route" not in st.session_state:
 
 # --- DRAWING ---
 st.markdown("Click islands on the map to build your route. Use the reset button to clear.")
-import numpy as np
 
 canvas_result = st_canvas(
     fill_color="#eee",
     stroke_width=0,
-    background_image=np.array(map_img),
+    background_image=map_array,
     update_streamlit=True,
     height=canvas_height,
     width=canvas_width,
