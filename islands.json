@@ -1,5 +1,11 @@
-git init
-git remote add origin https://github.com/YOUR_USERNAME/lake-ramsey-route-builder.git
-git add .
-git commit -m "Initial commit"
-git push -u origin main
+{
+  "Potter Island": [220, 140],
+  "Swiss Island": [320, 190],
+  "McCrea Island": [410, 230],
+  "Norway Island": [500, 200],
+  "Berry Island": [610, 250],
+  "Swansea Island": [460, 320],
+  "Galliard, Bass & Pike Island": [700, 220],
+  "Gull Rock": [280, 400],
+  "Ida Island": [160, 380]
+}
