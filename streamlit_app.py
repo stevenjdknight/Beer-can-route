@@ -25,6 +25,15 @@ with open("islands.json", "r") as f:
 
 island_names = list(island_data.keys())
 
+# Islands that can only be rounded once
+single_round_islands = {
+    "Norway Island",
+    "Berry Island",
+    "Galliard, Bass & Pike Island",
+    "Swansea Island",
+    "Ida Island"
+}
+
 # --- SESSION STATE ---
 if "selected" not in st.session_state:
     st.session_state.selected = []
@@ -33,18 +42,27 @@ if "selected" not in st.session_state:
 st.image(img, use_column_width=True)
 
 # --- ISLAND SELECTION ---
-st.subheader("🏝️ Island Options (up to 3 roundings each)")
+st.subheader("🏝️ Island Options – click on the islands in the order of rounding (up to 3 roundings each)")
 
 cols = st.columns(4)
+
 for i, name in enumerate(island_names):
-    for j in range(1, 4):  # Allow 3 rounds per island
-        label = f"{name} ({j})"
-        with cols[i % 4]:
+    with cols[i % 4]:
+        if name in single_round_islands:
+            label = name
             if st.button(f"{'✅ ' if label in st.session_state.selected else ''}{label}", key=label):
                 if label in st.session_state.selected:
                     st.session_state.selected.remove(label)
                 else:
                     st.session_state.selected.append(label)
+        else:
+            for j in range(1, 4):  # Allow 3 rounds for other islands
+                label = f"{name} ({j})"
+                if st.button(f"{'✅ ' if label in st.session_state.selected else ''}{label}", key=label):
+                    if label in st.session_state.selected:
+                        st.session_state.selected.remove(label)
+                    else:
+                        st.session_state.selected.append(label)
 
 # --- DISPLAY ROUTE ---
 if st.session_state.selected:
